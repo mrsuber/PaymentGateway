@@ -15,12 +15,12 @@ public class User {
     @Column(nullable = false, length = 64)
     private String password;
     @Column(nullable = false, length = 9)
-    private String phoneNumber;
+    private int phoneNumber;
 
     public User() {
     }
 
-    public User(Long id, String username, String email, String password, String phoneNumber) {
+    public User(Long id, String username, String email, String password, int phoneNumber) {
         this.id = id;
         this.username = username;
         this.email = email;
@@ -60,11 +60,11 @@ public class User {
         this.password = password;
     }
 
-    public String getPhoneNumber() {
+    public int getPhoneNumber() {
         return phoneNumber;
     }
 
-    public void setPhoneNumber(String phoneNumber) {
+    public void setPhoneNumber(int phoneNumber) {
         this.phoneNumber = phoneNumber;
     }
 }
