@@ -27,6 +27,8 @@ public class UserRespositoryTests {
         user.setEmail("daniegraham97@gmail.com");
         user.setPassword("daniegraham");
         user.setPhoneNumber(651523013);
+        user.setVerificationCode("ab23dc");
+        user.setEnabled(true);
 
         User savedUser = userRepo.save(user);
 

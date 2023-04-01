@@ -32,7 +32,7 @@ public class User implements UserDetails {
     @Enumerated(EnumType.STRING)
     private Role role;
 
-    @Column(nullable = true,  name = "verification_code", length = 6)
+    @Column(name = "verification_code", length = 6)
     private String verificationCode;
 
     private boolean enabled;
