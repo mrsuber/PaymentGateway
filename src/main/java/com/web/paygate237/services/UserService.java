@@ -1,5 +1,6 @@
 package com.web.paygate237.services;
 
+import com.web.paygate237.models.Role;
 import com.web.paygate237.models.User;
 import com.web.paygate237.repositories.UserRepository;
 import com.web.paygate237.requests.UserRequest;
@@ -7,7 +8,10 @@ import jakarta.mail.MessagingException;
 import jakarta.mail.internet.MimeMessage;
 import lombok.NoArgsConstructor;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationContext;
+import org.springframework.context.annotation.Bean;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -15,8 +19,14 @@ import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.thymeleaf.TemplateEngine;
+import org.thymeleaf.context.Context;
+import org.thymeleaf.spring5.SpringTemplateEngine;
+import org.thymeleaf.spring5.templateresolver.SpringResourceTemplateResolver;
+import org.thymeleaf.templatemode.TemplateMode;
 
 import java.io.UnsupportedEncodingException;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Random;
 
@@ -32,9 +42,38 @@ public class UserService implements UserDetailsService {
     @Autowired
     private JavaMailSender javaMailSender;
 
+//    @Autowired
+//    private SpringTemplateEngine templateEngine;
+
+//    @Autowired
     public List<User> listAll() {
         return userRepo.findAll();
     }
+
+    @Autowired
+    private ApplicationContext applicationContext;
+
+    public void setApplicationContext(ApplicationContext appContext) throws BeansException {
+        this.applicationContext = appContext;
+    }
+
+     public SpringResourceTemplateResolver htmlTemplateResolver(){
+        SpringResourceTemplateResolver emailTemplateResolver = new SpringResourceTemplateResolver();
+        emailTemplateResolver.setApplicationContext(applicationContext);
+        emailTemplateResolver.setPrefix("classpath:/templates/");
+        emailTemplateResolver.setSuffix(".html");
+        emailTemplateResolver.setTemplateMode(TemplateMode.HTML);
+        emailTemplateResolver.setCharacterEncoding(StandardCharsets.UTF_8.name());
+        return emailTemplateResolver;
+    }
+
+    public SpringTemplateEngine templateEngine() {
+        SpringTemplateEngine templateEngine = new SpringTemplateEngine();
+        templateEngine.setEnableSpringELCompiler(true);
+        templateEngine.setTemplateResolver(htmlTemplateResolver());
+        return templateEngine;
+    }
+
 
     @Override
     public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
@@ -51,6 +90,7 @@ public class UserService implements UserDetailsService {
         user.setUsername(userRequest.getUsername());
         user.setEmail(userRequest.getEmail());
         user.setPhoneNumber(userRequest.getPhoneNumber());
+        user.setRole(Role.USER);
 
         String encodedPassword = passwordEncoder.encode(user.getPassword());
         user.setPassword(encodedPassword);
@@ -75,14 +115,19 @@ public class UserService implements UserDetailsService {
                 + "<br><br>"
                 + "<h2 style='font-size: 80px'>" + user.getVerificationCode() +"</h2>";
 
+        Context context = new Context();
+        context.setVariable("user", user);
+
         MimeMessage message = javaMailSender.createMimeMessage();
         MimeMessageHelper helper = new MimeMessageHelper(message);
+
+        String html = templateEngine().process("verify-code", context);
 
         helper.setFrom(from, senderName);
         helper.setTo(to);
         helper.setSubject(subject);
 
-        helper.setText(content);
+        helper.setText(html, true);
 
         javaMailSender.send(message);
 
