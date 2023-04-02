@@ -2,8 +2,11 @@ package com.web.paygate237.services;
 
 import com.web.paygate237.models.Role;
 import com.web.paygate237.models.User;
+import com.web.paygate237.models.VerifyUser;
 import com.web.paygate237.repositories.UserRepository;
+import com.web.paygate237.repositories.VerifyRepository;
 import com.web.paygate237.requests.UserRequest;
+import com.web.paygate237.requests.VerifyRequest;
 import jakarta.mail.MessagingException;
 import jakarta.mail.internet.MimeMessage;
 import lombok.NoArgsConstructor;
@@ -12,6 +15,8 @@ import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.Bean;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.HttpStatusCode;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -27,6 +32,7 @@ import org.thymeleaf.templatemode.TemplateMode;
 
 import java.io.UnsupportedEncodingException;
 import java.nio.charset.StandardCharsets;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Random;
 
@@ -37,15 +43,15 @@ public class UserService implements UserDetailsService {
     private UserRepository userRepo;
 
     @Autowired
+    private VerifyRepository verifyRepo;
+
+    @Autowired
     private PasswordEncoder passwordEncoder;
 
     @Autowired
     private JavaMailSender javaMailSender;
 
-//    @Autowired
-//    private SpringTemplateEngine templateEngine;
-
-//    @Autowired
+    //    @Autowired
     public List<User> listAll() {
         return userRepo.findAll();
     }
@@ -57,7 +63,7 @@ public class UserService implements UserDetailsService {
         this.applicationContext = appContext;
     }
 
-     public SpringResourceTemplateResolver htmlTemplateResolver(){
+    public SpringResourceTemplateResolver htmlTemplateResolver() {
         SpringResourceTemplateResolver emailTemplateResolver = new SpringResourceTemplateResolver();
         emailTemplateResolver.setApplicationContext(applicationContext);
         emailTemplateResolver.setPrefix("classpath:/templates/");
@@ -92,15 +98,23 @@ public class UserService implements UserDetailsService {
         user.setPhoneNumber(userRequest.getPhoneNumber());
         user.setRole(Role.USER);
 
+        VerifyUser verifyUser = new VerifyUser();
+        verifyUser.setUser(user);
+        verifyUser.setCreatedDate(LocalDateTime.now());
+        verifyUser.setExpiredCode(5);
+
         String encodedPassword = passwordEncoder.encode(user.getPassword());
         user.setPassword(encodedPassword);
 
         String generatedCode = generateRandomCode();
 
+        verifyUser.setCode(generatedCode);
         user.setVerificationCode(generatedCode);
         user.setEnabled(false);
 
         sendVerificationEmail(user);
+
+        verifyRepo.save(verifyUser);
 
         return userRepo.save(user);
     }
@@ -109,11 +123,11 @@ public class UserService implements UserDetailsService {
         String to = user.getEmail();
         String from = "contact@paygate237.com";
         String senderName = "PayGate237";
-        String subject ="Confirm your account";
+        String subject = "Confirm your account";
         String content = "Hello, " + user.getUsername() + "<br><br>"
                 + "Thank you for signing up. Enter this code to confirm your email:"
                 + "<br><br>"
-                + "<h2 style='font-size: 80px'>" + user.getVerificationCode() +"</h2>";
+                + "<h2 style='font-size: 80px'>" + user.getVerificationCode() + "</h2>";
 
         Context context = new Context();
         context.setVariable("user", user);
@@ -134,17 +148,30 @@ public class UserService implements UserDetailsService {
         System.out.println("Email has been sent successfully!");
     }
 
-    public boolean verifyUser(String verificationCode) {
-        User user =userRepo.findByVerificationCode(verificationCode);
+    public HttpStatus verifyUser(VerifyRequest verifyRequest) {
+        User user = userRepo.findByVerificationCode(verifyRequest.getCode());
 
-        if (user == null || user.isEnabled()) {
-            return false;
+        System.out.println("User: " + user);
+
+        VerifyUser verifyUser = verifyRepo.findByCode(verifyRequest.getCode());
+
+        if (user != null && verifyUser != null) {
+            if (verifyUser.isExpired()) {
+                return HttpStatus.UNAUTHORIZED;
+            } else {
+                if (!user.isEnabled()) {
+                    
+                    user.setEnabled(true);
+                    userRepo.save(user);
+
+                    return HttpStatus.OK;
+
+                } else {
+                    return HttpStatus.CONFLICT;
+                }
+            }
         } else {
-            user.setVerificationCode(null);
-            user.setEnabled(true);
-            userRepo.save(user);
-
-            return true;
+            return HttpStatus.NOT_FOUND;
         }
     }
 
