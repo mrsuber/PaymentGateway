@@ -2,6 +2,7 @@ package com.web.paygate237.controllers;
 
 import com.web.paygate237.models.User;
 import com.web.paygate237.models.VerifyUser;
+import com.web.paygate237.requests.NewCodeRequest;
 import com.web.paygate237.requests.UserRequest;
 import com.web.paygate237.requests.VerifyRequest;
 import com.web.paygate237.services.UserService;
@@ -43,6 +44,17 @@ public class UserController {
         };
     }
 
-//    @GetMapping("/generate-new-code")
+    @PostMapping("/create-new-code")
+    public ResponseEntity<Object> createNewCode(@RequestBody NewCodeRequest newCodeRequest) {
+        HttpStatus newCodeStatus = userService.generateNewCode(newCodeRequest);
+
+        return switch (newCodeStatus) {
+            case NOT_FOUND -> ResponseEntity.status(newCodeStatus).body(Map.of("message", "User not found!"));
+            case OK -> ResponseEntity.status(newCodeStatus).body(Map.of("message", "Email Sent Successfully"));
+            case SERVICE_UNAVAILABLE -> ResponseEntity.status(newCodeStatus).body(Map.of("message", "A Server Error Occured!"));
+            case CONFLICT -> ResponseEntity.status(newCodeStatus).body(Map.of("message", "User is already activated!"));
+            default -> null;
+        };
+    }
 
 }

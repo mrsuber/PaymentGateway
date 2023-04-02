@@ -5,6 +5,7 @@ import com.web.paygate237.models.User;
 import com.web.paygate237.models.VerifyUser;
 import com.web.paygate237.repositories.UserRepository;
 import com.web.paygate237.repositories.VerifyRepository;
+import com.web.paygate237.requests.NewCodeRequest;
 import com.web.paygate237.requests.UserRequest;
 import com.web.paygate237.requests.VerifyRequest;
 import jakarta.mail.MessagingException;
@@ -124,10 +125,6 @@ public class UserService implements UserDetailsService {
         String from = "contact@paygate237.com";
         String senderName = "PayGate237";
         String subject = "Confirm your account";
-        String content = "Hello, " + user.getUsername() + "<br><br>"
-                + "Thank you for signing up. Enter this code to confirm your email:"
-                + "<br><br>"
-                + "<h2 style='font-size: 80px'>" + user.getVerificationCode() + "</h2>";
 
         Context context = new Context();
         context.setVariable("user", user);
@@ -148,6 +145,21 @@ public class UserService implements UserDetailsService {
         System.out.println("Email has been sent successfully!");
     }
 
+    private void resendVerificationEmail(User user) throws UnsupportedEncodingException, MessagingException {
+        String newlyGenerated = generateRandomCode();
+        user.setVerificationCode(newlyGenerated);
+
+        VerifyUser verifyUser = verifyRepo.findByUser(user);
+        verifyUser.setCreatedDate(LocalDateTime.now());
+        verifyUser.setExpiredCode(5);
+        verifyUser.setCode(newlyGenerated);
+
+        sendVerificationEmail(user);
+
+        verifyRepo.save(verifyUser);
+        userRepo.save(user);
+    }
+
     public HttpStatus verifyUser(VerifyRequest verifyRequest) {
         User user = userRepo.findByVerificationCode(verifyRequest.getCode());
 
@@ -160,7 +172,7 @@ public class UserService implements UserDetailsService {
                 return HttpStatus.UNAUTHORIZED;
             } else {
                 if (!user.isEnabled()) {
-                    
+
                     user.setEnabled(true);
                     userRepo.save(user);
 
@@ -170,6 +182,28 @@ public class UserService implements UserDetailsService {
                     return HttpStatus.CONFLICT;
                 }
             }
+        } else {
+            return HttpStatus.NOT_FOUND;
+        }
+    }
+
+    public HttpStatus generateNewCode(NewCodeRequest request) {
+        User user = userRepo.findByEmail(request.getEmail());
+
+        if (user != null ) {
+            System.out.println("User found: " + user.getUsername());
+            if (!user.isEnabled()) {
+                try {
+                    resendVerificationEmail(user);
+                    return HttpStatus.OK;
+                } catch (Exception e) {
+                    System.err.println("Error: " + e);
+                    return HttpStatus.SERVICE_UNAVAILABLE;
+                }
+            } else {
+                return HttpStatus.CONFLICT;
+            }
+
         } else {
             return HttpStatus.NOT_FOUND;
         }
