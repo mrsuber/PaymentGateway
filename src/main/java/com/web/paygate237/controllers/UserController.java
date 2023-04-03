@@ -8,6 +8,7 @@ import com.web.paygate237.services.UserService;
 import jakarta.mail.MessagingException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -25,8 +26,13 @@ public class UserController {
     private final UserService userService;
 
     @PostMapping("/signup")
-    public ResponseEntity<User> signup(@RequestBody UserRequest userRequest) throws UnsupportedEncodingException, MessagingException {
-        return ResponseEntity.ok(userService.signupUser(userRequest));
+    public ResponseEntity<Object> signup(@RequestBody UserRequest userRequest) throws UnsupportedEncodingException, MessagingException {
+        Map<String, ?> signupResponse = userService.signupUser(userRequest);
+        return switch ((HttpStatus) signupResponse.get("status")) {
+            case OK -> ResponseEntity.status((HttpStatusCode) signupResponse.get("status")).body(Map.of("user", signupResponse.get("user")));
+            case BAD_REQUEST -> ResponseEntity.status((HttpStatusCode) signupResponse.get("status")).body(Map.of("message", signupResponse.get("message")));
+            default -> null;
+        };
     }
 
     @PostMapping("/verify-code")

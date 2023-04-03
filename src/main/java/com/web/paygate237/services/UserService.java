@@ -30,6 +30,7 @@ import java.io.UnsupportedEncodingException;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.Random;
 
 @Service
@@ -47,7 +48,7 @@ public class UserService implements UserDetailsService {
     @Autowired
     private JavaMailSender javaMailSender;
 
-    //    @Autowired
+    @Autowired
     public List<User> listAll() {
         return userRepo.findAll();
     }
@@ -55,9 +56,9 @@ public class UserService implements UserDetailsService {
     @Autowired
     private ApplicationContext applicationContext;
 
-    public void setApplicationContext(ApplicationContext appContext) throws BeansException {
-        this.applicationContext = appContext;
-    }
+//    public void setApplicationContext(ApplicationContext appContext) throws BeansException {
+//        this.applicationContext = appContext;
+//    }
 
     public SpringResourceTemplateResolver htmlTemplateResolver() {
         SpringResourceTemplateResolver emailTemplateResolver = new SpringResourceTemplateResolver();
@@ -86,33 +87,38 @@ public class UserService implements UserDetailsService {
         return new User(user);
     }
 
-    public User signupUser(UserRequest userRequest) throws UnsupportedEncodingException, MessagingException {
-        User user = new User();
-        user.setPassword(userRequest.getPassword());
-        user.setUsername(userRequest.getUsername());
-        user.setEmail(userRequest.getEmail());
-        user.setPhoneNumber(userRequest.getPhoneNumber());
-        user.setRole(Role.USER);
+    public Map<String, ?> signupUser(UserRequest userRequest) throws UnsupportedEncodingException, MessagingException {
+        try {
+            User user = new User();
+            user.setPassword(userRequest.getPassword());
+            user.setUsername(userRequest.getUsername());
+            user.setEmail(userRequest.getEmail());
+            user.setPhoneNumber(userRequest.getPhoneNumber());
+            user.setRole(Role.USER);
 
-        VerifyUser verifyUser = new VerifyUser();
-        verifyUser.setUser(user);
-        verifyUser.setCreatedDate(LocalDateTime.now());
-        verifyUser.setExpiredCode(5);
+            VerifyUser verifyUser = new VerifyUser();
+            verifyUser.setUser(user);
+            verifyUser.setCreatedDate(LocalDateTime.now());
+            verifyUser.setExpiredCode(5);
 
-        String encodedPassword = passwordEncoder.encode(user.getPassword());
-        user.setPassword(encodedPassword);
+            String encodedPassword = passwordEncoder.encode(user.getPassword());
+            user.setPassword(encodedPassword);
 
-        String generatedCode = generateRandomCode();
+            String generatedCode = generateRandomCode();
 
-        verifyUser.setCode(generatedCode);
-        user.setVerificationCode(generatedCode);
-        user.setEnabled(false);
+            verifyUser.setCode(generatedCode);
+            user.setVerificationCode(generatedCode);
+            user.setEnabled(false);
 
-        sendVerificationEmail(user);
+            sendVerificationEmail(user);
 
-        verifyRepo.save(verifyUser);
+            verifyRepo.save(verifyUser);
 
-        return userRepo.save(user);
+            return Map.of("user", userRepo.save(user), "status", HttpStatus.OK);
+
+        } catch (Exception e) {
+            return Map.of("message", e.getMessage(), "status", HttpStatus.BAD_REQUEST);
+        }
     }
 
     private void sendVerificationEmail(User user) throws UnsupportedEncodingException, MessagingException {
