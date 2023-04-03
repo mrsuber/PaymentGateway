@@ -1,7 +1,6 @@
 package com.web.paygate237.controllers;
 
 import com.web.paygate237.models.User;
-import com.web.paygate237.models.VerifyUser;
 import com.web.paygate237.requests.NewCodeRequest;
 import com.web.paygate237.requests.UserRequest;
 import com.web.paygate237.requests.VerifyRequest;
@@ -10,7 +9,10 @@ import jakarta.mail.MessagingException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
 import java.io.UnsupportedEncodingException;
 import java.util.Map;
