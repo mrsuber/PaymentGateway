@@ -18,7 +18,7 @@ import java.util.List;
 @Table(name = "users")
 public class User implements UserDetails {
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @GeneratedValue(strategy = GenerationType.TABLE)
     private Long id;
     @Column(nullable = false, unique = true, length = 20)
     private String username;
@@ -32,7 +32,7 @@ public class User implements UserDetails {
     @Enumerated(EnumType.STRING)
     private Role role;
 
-    @Column(nullable = true,  name = "verification_code", length = 6)
+    @Column(name = "verification_code", length = 6)
     private String verificationCode;
 
     private boolean enabled;
