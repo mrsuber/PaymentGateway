@@ -31,6 +31,7 @@ public class UserController {
         return switch ((HttpStatus) signupResponse.get("status")) {
             case OK -> ResponseEntity.status((HttpStatusCode) signupResponse.get("status")).body(Map.of("user", signupResponse.get("user")));
             case BAD_REQUEST -> ResponseEntity.status((HttpStatusCode) signupResponse.get("status")).body(Map.of("message", signupResponse.get("message")));
+            case CONFLICT -> ResponseEntity.status((HttpStatusCode) signupResponse.get("status")).body(Map.of("message", signupResponse.get("message")));
             default -> null;
         };
     }

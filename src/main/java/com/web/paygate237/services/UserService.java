@@ -10,7 +10,6 @@ import com.web.paygate237.requests.UserRequest;
 import com.web.paygate237.requests.VerifyRequest;
 import jakarta.mail.MessagingException;
 import jakarta.mail.internet.MimeMessage;
-import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationContext;
 import org.springframework.http.HttpStatus;
@@ -88,7 +87,12 @@ public class UserService implements UserDetailsService {
     }
 
     public Map<String, ?> signupUser(UserRequest userRequest) throws UnsupportedEncodingException, MessagingException {
+        if (userRepo.existsByEmail(userRequest.getEmail()) || userRepo.existsByUsername(userRequest.getUsername())) {
+            return Map.of("message", "Username or Email already exists!", "status", HttpStatus.CONFLICT);
+        }
+        
         try {
+
             User user = new User();
             user.setPassword(userRequest.getPassword());
             user.setUsername(userRequest.getUsername());
@@ -116,9 +120,11 @@ public class UserService implements UserDetailsService {
 
             return Map.of("user", userRepo.save(user), "status", HttpStatus.OK);
 
+
         } catch (Exception e) {
             return Map.of("message", e.getMessage(), "status", HttpStatus.BAD_REQUEST);
         }
+
     }
 
     private void sendVerificationEmail(User user) throws UnsupportedEncodingException, MessagingException {
@@ -191,7 +197,7 @@ public class UserService implements UserDetailsService {
     public HttpStatus generateNewCode(NewCodeRequest request) {
         User user = userRepo.findByEmail(request.getEmail());
 
-        if (user != null ) {
+        if (user != null) {
             System.out.println("User found: " + user.getUsername());
             if (!user.isEnabled()) {
                 try {
